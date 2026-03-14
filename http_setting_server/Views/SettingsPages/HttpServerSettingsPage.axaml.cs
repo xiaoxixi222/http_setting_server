@@ -73,8 +73,25 @@ public class HttpServerSettingsViewModel : PluginSettings
     public void SetPlugin(Plugin plugin)
     {
         _plugin = plugin;
+        // 启动定时器来更新服务器状态
+        StartStatusUpdateTimer();
         UpdateServerStatus();
         UpdateCommands();
+    }
+
+    private System.Threading.Timer? _statusUpdateTimer;
+
+    private void StartStatusUpdateTimer()
+    {
+        // 停止现有的定时器
+        _statusUpdateTimer?.Dispose();
+        
+        // 启动新的定时器，每秒更新一次状态
+        _statusUpdateTimer = new System.Threading.Timer(_ =>
+        {
+            UpdateServerStatus();
+            UpdateCommands();
+        }, null, 0, 1000);
     }
 
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs? e)
@@ -99,9 +116,17 @@ public class HttpServerSettingsViewModel : PluginSettings
 
     private void UpdateServerStatus()
     {
-        ServerStatus = IsServerEnabled 
-            ? $"运行中 (端口 {Port})" 
-            : "已停止";
+        if (_plugin != null)
+        {
+            var isActuallyRunning = _plugin.IsServerRunning();
+            ServerStatus = isActuallyRunning 
+                ? $"运行中 (端口 {Port})" 
+                : "已停止";
+        }
+        else
+        {
+            ServerStatus = "未知";
+        }
     }
 
     private void UpdateCommands()
@@ -112,12 +137,12 @@ public class HttpServerSettingsViewModel : PluginSettings
 
     private bool CanStartServer()
     {
-        return _plugin != null && !IsServerEnabled;
+        return _plugin != null && !_plugin.IsServerRunning();
     }
 
     private bool CanStopServer()
     {
-        return _plugin != null && IsServerEnabled;
+        return _plugin != null && _plugin.IsServerRunning();
     }
 
     private void StartServer()

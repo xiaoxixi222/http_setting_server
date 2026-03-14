@@ -192,4 +192,9 @@ public class Plugin : PluginBase
         _httpServer.Stop();
         _logger?.LogInformation("HTTP 服务器已停止");
     }
+    
+    public bool IsServerRunning()
+    {
+        return _httpServer != null && _httpServer.IsRunning;
+    }
 }
