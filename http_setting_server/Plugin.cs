@@ -23,6 +23,9 @@ public class Plugin : PluginBase
 
     public override void Initialize(HostBuilderContext context, IServiceCollection services)
     {
+        // 将 Plugin 实例注册为服务，供设置页面使用
+        services.AddSingleton<Plugin>(this);
+        
         // 注册设置页面
         services.AddSettingsPage<Views.SettingsPages.HttpServerSettingsPage>();
 
@@ -157,5 +160,36 @@ public class Plugin : PluginBase
         
         _logger?.LogInformation("启动 HTTP 服务器");
         _ = Task.Run(() => _httpServer.StartAsync());
+    }
+    
+    public void StartServer(int port)
+    {
+        _logger?.LogInformation("手动启动 HTTP 服务器 - 端口: {Port}", port);
+        
+        if (_httpServer != null && _httpServer.IsRunning)
+        {
+            _logger?.LogWarning("HTTP 服务器已在运行中");
+            return;
+        }
+        
+        var componentsService = IAppHost.GetService<IComponentsService>();
+        var logger = IAppHost.GetService<ILogger<HttpServer>>();
+        _httpServer = new HttpServer(componentsService, logger, port);
+        _logger?.LogInformation("启动 HTTP 服务器");
+        _ = Task.Run(() => _httpServer.StartAsync());
+    }
+    
+    public void StopServer()
+    {
+        _logger?.LogInformation("手动停止 HTTP 服务器");
+        
+        if (_httpServer == null || !_httpServer.IsRunning)
+        {
+            _logger?.LogWarning("HTTP 服务器未运行");
+            return;
+        }
+        
+        _httpServer.Stop();
+        _logger?.LogInformation("HTTP 服务器已停止");
     }
 }
