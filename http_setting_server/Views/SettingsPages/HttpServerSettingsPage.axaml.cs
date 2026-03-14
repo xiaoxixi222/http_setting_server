@@ -8,12 +8,26 @@ namespace http_setting_server.Views.SettingsPages;
 public partial class HttpServerSettingsPage : SettingsPageBase
 {
     private HttpServerSettingsViewModel? _viewModel;
+    private Plugin? _plugin;
 
     public HttpServerSettingsPage()
     {
         InitializeComponent();
         _viewModel = new HttpServerSettingsViewModel();
         DataContext = _viewModel;
+    }
+
+    public void SetPlugin(Plugin plugin)
+    {
+        _plugin = plugin;
+        
+        // 加载当前设置
+        if (_viewModel != null)
+        {
+            var settings = plugin.LoadSettings();
+            _viewModel.LoadFromSettings(settings);
+            _viewModel.SetPlugin(plugin);
+        }
     }
 }
 
@@ -31,6 +45,14 @@ public class HttpServerSettingsViewModel : PluginSettings
     }
 
     public string ServerStatus { get; private set; }
+
+    public void LoadFromSettings(PluginSettings settings)
+    {
+        IsServerEnabled = settings.IsServerEnabled;
+        Port = settings.Port;
+        ShowStartupNotification = settings.ShowStartupNotification;
+        UpdateServerStatus();
+    }
 
     public void SetPlugin(Plugin plugin)
     {

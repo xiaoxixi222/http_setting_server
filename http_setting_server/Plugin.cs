@@ -9,6 +9,7 @@ using http_setting_server.Views.SettingsPages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace http_setting_server;
 
@@ -17,6 +18,7 @@ public class Plugin : PluginBase
 {
     private HttpServer? _httpServer;
     private PluginSettings? _settings;
+    private const string SettingsFileName = "settings.json";
 
     public override void Initialize(HostBuilderContext context, IServiceCollection services)
     {
@@ -51,10 +53,28 @@ public class Plugin : PluginBase
         };
     }
 
-    private PluginSettings LoadSettings()
+    public PluginSettings LoadSettings()
     {
-        // 这里应该从配置文件加载设置
-        // 暂时返回默认设置
+        try
+        {
+            var settingsPath = Path.Combine(PluginConfigFolder, SettingsFileName);
+            if (File.Exists(settingsPath))
+            {
+                var json = File.ReadAllText(settingsPath);
+                var settings = JsonSerializer.Deserialize<PluginSettings>(json);
+                if (settings != null)
+                {
+                    return settings;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // 如果加载失败，使用默认设置
+            Console.WriteLine($"加载设置失败: {ex.Message}");
+        }
+
+        // 返回默认设置
         return new PluginSettings
         {
             IsServerEnabled = true,
@@ -66,7 +86,17 @@ public class Plugin : PluginBase
     public void SaveSettings(PluginSettings settings)
     {
         _settings = settings;
-        // 这里应该保存设置到配置文件
+        
+        try
+        {
+            var settingsPath = Path.Combine(PluginConfigFolder, SettingsFileName);
+            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(settingsPath, json);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"保存设置失败: {ex.Message}");
+        }
     }
 
     public void RestartServer(int port)
