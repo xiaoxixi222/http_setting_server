@@ -19,6 +19,8 @@ public class HttpServer
     private static long _requestIdCounter = 0;
     private const int RequestTimeoutMs = 30000; // 30秒超时
 
+    public bool IsRunning => _isRunning;
+
     public HttpServer(IComponentsService componentsService, ILogger<HttpServer> logger, int port = 9900)
     {
         _componentsService = componentsService;
