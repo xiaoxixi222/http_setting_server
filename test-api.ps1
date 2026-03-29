@@ -4,8 +4,8 @@
 # 2. 运行：powershell -ExecutionPolicy Bypass -File test-api.ps1
 
 # 配置
-$baseUrl = "http://localhost:9900"
-$token = "AbCdEf1234567890"  # 替换为你的实际 Token
+#$baseUrl = "http://localhost:9900"
+#$token = "AbCdEf1234567890"  # 替换为你的实际 Token
 
 # 创建请求头
 $headers = @{
