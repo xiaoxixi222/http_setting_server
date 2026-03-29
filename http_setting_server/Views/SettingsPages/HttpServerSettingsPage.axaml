@@ -61,23 +61,12 @@
         
         <!-- 控制按钮 -->
         <StackPanel Spacing="10" Margin="0,10,0,0">
-            <Button Content="启动服务器" 
+            <Button Content="启动服务器"
                     Command="{Binding StartServerCommand}"
                     HorizontalAlignment="Stretch"/>
-            <Button Content="停止服务器" 
+            <Button Content="停止服务器"
                     Command="{Binding StopServerCommand}"
                     HorizontalAlignment="Stretch"/>
         </StackPanel>
-        
-        <!-- 状态信息 -->
-        <Border Padding="10" 
-                Background="#F0F0F0" 
-                CornerRadius="5" 
-                Margin="0,10,0,0">
-            <StackPanel Spacing="5">
-                <TextBlock Text="服务器状态" FontWeight="Bold"/>
-                <TextBlock Text="{Binding ServerStatus}"/>
-            </StackPanel>
-        </Border>
     </StackPanel>
 </ci:SettingsPageBase>

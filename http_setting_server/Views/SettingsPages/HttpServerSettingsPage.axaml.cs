@@ -52,14 +52,11 @@ public class HttpServerSettingsViewModel : PluginSettings
         ShowStartupNotification = false;
         EnableAuthentication = true;
         AuthToken = string.Empty;
-        ServerStatus = "已停止";
 
         StartServerCommand = new RelayCommand(StartServer, CanStartServer);
         StopServerCommand = new RelayCommand(StopServer, CanStopServer);
         GenerateTokenCommand = new RelayCommand(GenerateToken);
     }
-
-    public string ServerStatus { get; private set; }
 
     public RelayCommand StartServerCommand { get; }
     public RelayCommand StopServerCommand { get; }
@@ -72,36 +69,13 @@ public class HttpServerSettingsViewModel : PluginSettings
         ShowStartupNotification = settings.ShowStartupNotification;
         EnableAuthentication = settings.EnableAuthentication;
         AuthToken = settings.AuthToken;
-        UpdateServerStatus();
         UpdateCommands();
     }
 
     public void SetPlugin(Plugin plugin)
     {
         _plugin = plugin;
-        // 启动定时器来更新服务器状态
-        StartStatusUpdateTimer();
-        UpdateServerStatus();
         UpdateCommands();
-    }
-
-    private System.Threading.Timer? _statusUpdateTimer;
-
-    private void StartStatusUpdateTimer()
-    {
-        // 停止现有的定时器
-        _statusUpdateTimer?.Dispose();
-
-        // 启动新的定时器，每秒更新一次状态
-        _statusUpdateTimer = new System.Threading.Timer(_ =>
-        {
-            // 使用 Dispatcher 将 UI 更新调度到 UI 线程
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                UpdateServerStatus();
-                UpdateCommands();
-            });
-        }, null, 0, 1000);
     }
 
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs? e)
@@ -119,23 +93,7 @@ public class HttpServerSettingsViewModel : PluginSettings
                 _plugin.RestartServer(Port);
             }
 
-            UpdateServerStatus();
             UpdateCommands();
-        }
-    }
-
-    private void UpdateServerStatus()
-    {
-        if (_plugin != null)
-        {
-            var isActuallyRunning = _plugin.IsServerRunning();
-            ServerStatus = isActuallyRunning 
-                ? $"运行中 (端口 {Port})" 
-                : "已停止";
-        }
-        else
-        {
-            ServerStatus = "未知";
         }
     }
 
@@ -162,7 +120,6 @@ public class HttpServerSettingsViewModel : PluginSettings
             IsServerEnabled = true;
             _plugin.SaveSettings(this);
             _plugin.StartServer(Port);
-            UpdateServerStatus();
             UpdateCommands();
         }
     }
@@ -174,7 +131,6 @@ public class HttpServerSettingsViewModel : PluginSettings
             IsServerEnabled = false;
             _plugin.SaveSettings(this);
             _plugin.StopServer();
-            UpdateServerStatus();
             UpdateCommands();
         }
     }
