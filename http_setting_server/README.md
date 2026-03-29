@@ -14,6 +14,7 @@
 - 修改组件设置
 - 保存配置
 - 获取组件元数据信息
+- **API 鉴权**：通过 Token 保护 API 访问
 
 ### 新特性
 
@@ -22,6 +23,7 @@
 - **组件元数据**：获取组件类型、描述等详细信息
 - **详细日志**：使用 ClassIsland 日志系统，完整的请求日志和错误追踪
 - **请求超时**：30秒超时保护
+- **API 鉴权**：默认启用 Token 鉴权，保护敏感 API 接口
 
 ## 使用方法
 
@@ -35,15 +37,49 @@
 - 组件处理状态
 - 响应状态和处理时间
 - 错误信息和完整堆栈跟踪
+- **鉴权状态和 Token 验证结果**
 
 日志可以在 ClassIsland 的日志查看器中查看，方便调试和问题排查。
 
+### API 鉴权
+
+插件默认启用 API 鉴权功能，所有 API 请求需要在请求头中提供有效的 Token。
+
+**配置方式：**
+- 在 ClassIsland 设置中找到"HTTP 服务器"设置页面
+- 启用/禁用"启用 API 鉴权"开关（默认启用）
+- 查看或生成新的 Token（16 位随机字符串）
+
+**使用方式：**
+在 HTTP 请求头中添加 `Authorization` 字段：
+
+```http
+Authorization: Bearer {your-token}
+```
+
+**获取 Token：**
+- 首次启动插件时自动生成 Token
+- 在设置页面可以查看当前 Token
+- 点击"生成"按钮可以生成新的 Token
+
+**禁用鉴权：**
+在设置页面关闭"启用 API 鉴权"开关即可（不推荐）
+
 ### API 端点
+
+**重要提示：** 所有 API 请求需要在请求头中提供 Token（默认启用鉴权）：
+
+```http
+Authorization: Bearer {your-token}
+```
+
+未提供或提供错误的 Token 将返回 `401 Unauthorized` 错误。
 
 #### 1. 获取所有组件列表
 
 ```http
 GET /api/components
+Authorization: Bearer {your-token}
 ```
 
 **响应示例：**
@@ -98,6 +134,7 @@ GET /api/components
 
 ```http
 GET /api/components/{componentId}
+Authorization: Bearer {your-token}
 ```
 
 **响应示例：**
@@ -140,6 +177,7 @@ GET /api/components/{componentId}
 
 ```http
 GET /api/components/{componentId}/settings
+Authorization: Bearer {your-token}
 ```
 
 **响应示例：**
@@ -157,6 +195,7 @@ GET /api/components/{componentId}/settings
 ```http
 POST /api/components/{componentId}/settings
 Content-Type: application/json
+Authorization: Bearer {your-token}
 
 {
   "format": "HH:mm",
@@ -181,6 +220,7 @@ Content-Type: application/json
 
 ```http
 POST /api/save
+Authorization: Bearer {your-token}
 ```
 
 **成功响应：**
@@ -194,23 +234,28 @@ POST /api/save
 
 ### 使用示例
 
+**注意：** 以下示例假设你的 Token 是 `AbCdEf1234567890`，请替换为你实际的 Token。
+
 #### 使用 curl 获取组件列表
 
 ```bash
-curl http://localhost:9900/api/components
+curl -H "Authorization: Bearer AbCdEf1234567890" \
+  http://localhost:9900/api/components
 ```
 
 #### 使用 curl 获取顶层组件设置
 
 ```bash
-curl http://localhost:9900/api/components/0-0
+curl -H "Authorization: Bearer AbCdEf1234567890" \
+  http://localhost:9900/api/components/0-0
 ```
 
 #### 使用 curl 获取嵌套组件设置
 
 ```bash
 # 获取堆叠组件内的第一个子组件
-curl http://localhost:9900/api/components/0-0-0
+curl -H "Authorization: Bearer AbCdEf1234567890" \
+  http://localhost:9900/api/components/0-0-0
 ```
 
 #### 使用 curl 修改组件设置
@@ -219,18 +264,21 @@ curl http://localhost:9900/api/components/0-0-0
 # 修改顶层组件
 curl -X POST http://localhost:9900/api/components/0-0/settings \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer AbCdEf1234567890" \
   -d "{\"format\": \"HH:mm\"}"
 
 # 修改嵌套组件
 curl -X POST http://localhost:9900/api/components/0-0-0/settings \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer AbCdEf1234567890" \
   -d "{\"text\": \"Hello World\"}"
 ```
 
 #### 使用 curl 保存配置
 
 ```bash
-curl -X POST http://localhost:9900/api/save
+curl -X POST http://localhost:9900/api/save \
+  -H "Authorization: Bearer AbCdEf1234567890"
 ```
 
 #### 使用 Python 获取组件列表
@@ -238,7 +286,11 @@ curl -X POST http://localhost:9900/api/save
 ```python
 import requests
 
-response = requests.get('http://localhost:9900/api/components')
+headers = {
+    'Authorization': 'Bearer AbCdEf1234567890'
+}
+
+response = requests.get('http://localhost:9900/api/components', headers=headers)
 components = response.json()
 
 # 遍历所有组件
@@ -255,19 +307,24 @@ for component in components:
 ```python
 import requests
 
+headers = {
+    'Authorization': 'Bearer AbCdEf1234567890'
+}
+
 # 修改堆叠组件（0-0）内的文字组件（0-0-0）
 component_id = '0-0-0'
 settings = {'text': '新的文字内容'}
 
 response = requests.post(
     f'http://localhost:9900/api/components/{component_id}/settings',
+    headers=headers,
     json=settings
 )
 
 print(response.json())
 
 # 保存配置
-requests.post('http://localhost:9900/api/save')
+requests.post('http://localhost:9900/api/save', headers=headers)
 ```
 
 ## 字段说明
@@ -307,8 +364,18 @@ requests.post('http://localhost:9900/api/save')
 - **请求超时**：每个请求有 30 秒超时限制
 - **日志查看**：插件使用 ClassIsland 的日志系统，日志可以在 ClassIsland 的日志查看器中查看
 - **服务器地址**：默认监听 `localhost:9900`，只允许本地访问
+- **API 鉴权**：默认启用 Token 鉴权，所有请求需要在 Header 中提供 `Authorization: Bearer {token}`
+- **Token 安全**：请妥善保管你的 Token，不要泄露给他人。建议定期更换 Token
 
 ## 故障排除
+
+### 401 Unauthorized
+
+如果收到 `401 Unauthorized` 错误：
+1. 检查是否提供了正确的 Token
+2. 确认 Token 格式正确：`Authorization: Bearer {token}`
+3. 检查鉴权是否已启用（默认启用）
+4. 查看 ClassIsland 日志获取详细的 Token 验证结果
 
 ### 组件找不到
 
@@ -326,6 +393,14 @@ requests.post('http://localhost:9900/api/save')
 4. 查看 ClassIsland 日志获取详细错误堆栈
 
 ## 版本历史
+
+### 1.1.0.0
+
+- ✅ **API 鉴权**：添加 Token 鉴权机制，默认启用
+- ✅ **自动生成 Token**：首次启动自动生成 16 位随机 Token
+- ✅ **Token 管理**：设置页面支持查看和生成新 Token
+- ✅ **线程安全修复**：修复定时器回调的线程问题
+- ✅ **配置持久化**：Token 和鉴权设置自动保存
 
 ### 1.0.0.0
 

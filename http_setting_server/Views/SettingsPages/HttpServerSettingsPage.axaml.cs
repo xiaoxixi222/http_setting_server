@@ -50,22 +50,28 @@ public class HttpServerSettingsViewModel : PluginSettings
         IsServerEnabled = true;
         Port = 9900;
         ShowStartupNotification = false;
+        EnableAuthentication = true;
+        AuthToken = string.Empty;
         ServerStatus = "已停止";
-        
+
         StartServerCommand = new RelayCommand(StartServer, CanStartServer);
         StopServerCommand = new RelayCommand(StopServer, CanStopServer);
+        GenerateTokenCommand = new RelayCommand(GenerateToken);
     }
 
     public string ServerStatus { get; private set; }
 
     public RelayCommand StartServerCommand { get; }
     public RelayCommand StopServerCommand { get; }
+    public RelayCommand GenerateTokenCommand { get; }
 
     public void LoadFromSettings(PluginSettings settings)
     {
         IsServerEnabled = settings.IsServerEnabled;
         Port = settings.Port;
         ShowStartupNotification = settings.ShowStartupNotification;
+        EnableAuthentication = settings.EnableAuthentication;
+        AuthToken = settings.AuthToken;
         UpdateServerStatus();
         UpdateCommands();
     }
@@ -85,18 +91,22 @@ public class HttpServerSettingsViewModel : PluginSettings
     {
         // 停止现有的定时器
         _statusUpdateTimer?.Dispose();
-        
+
         // 启动新的定时器，每秒更新一次状态
         _statusUpdateTimer = new System.Threading.Timer(_ =>
         {
-            UpdateServerStatus();
-            UpdateCommands();
+            // 使用 Dispatcher 将 UI 更新调度到 UI 线程
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                UpdateServerStatus();
+                UpdateCommands();
+            });
         }, null, 0, 1000);
     }
 
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs? e)
     {
-        base.OnPropertyChanged(e);
+        base.OnPropertyChanged(e!);
 
         // 当设置修改时，保存并应用
         if (_plugin != null)
@@ -104,7 +114,7 @@ public class HttpServerSettingsViewModel : PluginSettings
             _plugin.SaveSettings(this);
 
             // 如果端口改变，重启服务器
-            if (e != null && e.PropertyName == nameof(Port))
+            if (e?.PropertyName == nameof(Port))
             {
                 _plugin.RestartServer(Port);
             }
@@ -166,6 +176,24 @@ public class HttpServerSettingsViewModel : PluginSettings
             _plugin.StopServer();
             UpdateServerStatus();
             UpdateCommands();
+        }
+    }
+
+    private void GenerateToken()
+    {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        var random = new Random();
+        var token = new char[16];
+        for (int i = 0; i < token.Length; i++)
+        {
+            token[i] = chars[random.Next(chars.Length)];
+        }
+        AuthToken = new string(token);
+
+        // 保存设置
+        if (_plugin != null)
+        {
+            _plugin.SaveSettings(this);
         }
     }
 }

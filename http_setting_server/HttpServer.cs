@@ -14,6 +14,7 @@ public class HttpServer
     private readonly IComponentsService _componentsService;
     private readonly ILogger<HttpServer> _logger;
     private readonly int _port;
+    private readonly PluginSettings _settings;
     private bool _isRunning;
     private CancellationTokenSource? _cancellationTokenSource;
     private static long _requestIdCounter = 0;
@@ -21,10 +22,11 @@ public class HttpServer
 
     public bool IsRunning => _isRunning;
 
-    public HttpServer(IComponentsService componentsService, ILogger<HttpServer> logger, int port = 9900)
+    public HttpServer(IComponentsService componentsService, ILogger<HttpServer> logger, PluginSettings settings, int port = 9900)
     {
         _componentsService = componentsService;
         _logger = logger;
+        _settings = settings;
         _port = port;
         _listener = new HttpListener();
         _listener.Prefixes.Add($"http://localhost:{_port}/");
@@ -165,6 +167,19 @@ public class HttpServer
 
             LogInfo($"[Request #{requestId}] {method} {path} from {remoteEndPoint}");
 
+            // 验证 token
+            if (!AuthenticateRequest(request, requestId))
+            {
+                response.StatusCode = 401;
+                response.ContentType = "application/json; charset=utf-8";
+                var error = Encoding.UTF8.GetBytes($"{{\"error\": \"Unauthorized: Invalid or missing authentication token\", \"requestId\": {requestId}}}");
+                response.ContentLength64 = error.Length;
+                await response.OutputStream.WriteAsync(error, 0, error.Length);
+                stopwatch.Stop();
+                LogWarning($"[Request #{requestId}] Authentication failed - Status: 401, Time: {stopwatch.ElapsedMilliseconds}ms");
+                return;
+            }
+
             // 设置请求超时
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource?.Token ?? default);
             cts.CancelAfter(RequestTimeoutMs);
@@ -227,6 +242,40 @@ public class HttpServer
     private string EscapeJsonString(string str)
     {
         return str.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r").Replace("\t", "\\t");
+    }
+
+    private bool AuthenticateRequest(HttpListenerRequest request, long requestId)
+    {
+        // 如果未启用鉴权，允许所有请求
+        if (!_settings.EnableAuthentication)
+        {
+            LogInfo($"[Request #{requestId}] 鉴权未启用，允许访问");
+            return true;
+        }
+
+        // 从 Authorization Header 中提取 token
+        var authHeader = request.Headers["Authorization"];
+        if (!string.IsNullOrEmpty(authHeader))
+        {
+            // 格式应该是 "Bearer {token}"
+            if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                var token = authHeader.Substring(7).Trim();
+                if (token == _settings.AuthToken)
+                {
+                    LogInfo($"[Request #{requestId}] Token 验证成功");
+                    return true;
+                }
+                else
+                {
+                    LogWarning($"[Request #{requestId}] Token 验证失败");
+                    return false;
+                }
+            }
+        }
+
+        LogWarning($"[Request #{requestId}] 未提供有效的 Authorization Header");
+        return false;
     }
 
     private async Task<(int, string)> HandleGetRequest(string path, long requestId)

@@ -40,4 +40,29 @@ public class PluginSettings : ObservableObject
             OnPropertyChanged();
         }
     }
+
+    private bool _enableAuthentication = true;
+    private string _authToken = string.Empty;
+
+    public bool EnableAuthentication
+    {
+        get => _enableAuthentication;
+        set
+        {
+            if (value == _enableAuthentication) return;
+            _enableAuthentication = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string AuthToken
+    {
+        get => _authToken;
+        set
+        {
+            if (value == _authToken) return;
+            _authToken = value;
+            OnPropertyChanged();
+        }
+    }
 }
